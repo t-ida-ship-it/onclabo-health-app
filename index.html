@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Onc Labo — 健康データ管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #f8f7f4;
+  --surface: #ffffff;
+  --border: rgba(0,0,0,0.09);
+  --border-md: rgba(0,0,0,0.15);
+  --text: #1a1a18;
+  --text-2: #5a5a56;
+  --text-3: #9a9a94;
+  --green: #3d7a1e;
+  --green-light: #eaf3de;
+  --green-mid: #639922;
+  --amber: #bf7012;
+  --amber-light: #faeeda;
+  --red: #b03030;
+  --red-light: #fcebeb;
+  --purple: #4d42b0;
+  --purple-light: #eeedfe;
+  --teal: #0f6e56;
+  --teal-light: #e1f5ee;
+  --radius: 10px;
+  --radius-sm: 6px;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+/* Sidebar */
+.sidebar {
+  width: 220px; min-height: 100vh; background: var(--surface);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; z-index: 100;
+}
+.logo { padding: 22px 18px 16px; border-bottom: 1px solid var(--border); }
+.logo-name { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: 0.02em; }
+.logo-sub { font-size: 10px; color: var(--text-3); margin-top: 2px; letter-spacing: 0.05em; }
+.nav { padding: 10px 0; flex: 1; }
+.nav-section-label { font-size: 10px; color: var(--text-3); padding: 8px 18px 4px; letter-spacing: 0.08em; text-transform: uppercase; }
+.nav-item {
+  display: flex; align-items: center; gap: 9px; padding: 8px 18px;
+  font-size: 13px; color: var(--text-2); cursor: pointer;
+  border-left: 2px solid transparent; transition: all 0.15s;
+}
+.nav-item:hover { background: var(--bg); color: var(--text); }
+.nav-item.active { background: var(--green-light); color: var(--green); border-left-color: var(--green-mid); font-weight: 500; }
+.nav-item i { font-size: 16px; }
+.sidebar-user {
+  margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--green); flex-shrink: 0; }
+.user-name { font-size: 13px; font-weight: 500; }
+.user-id { font-size: 10px; color: var(--text-3); }
+
+/* Main */
+.main { margin-left: 220px; flex: 1; min-height: 100vh; }
+.topbar {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 14px 26px; display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 50;
+}
+.topbar-title { font-size: 16px; font-weight: 700; }
+.topbar-sub { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; border: 1px solid var(--border-md); background: var(--surface); color: var(--text); font-family: inherit; transition: all 0.15s; }
+.btn:hover { background: var(--bg); }
+.btn-primary { background: var(--green); color: #fff; border-color: var(--green); font-weight: 500; }
+.btn-primary:hover { background: var(--green-mid); border-color: var(--green-mid); }
+
+.content { padding: 22px 26px; }
+
+/* Pages */
+.page { display: none; }
+.page.active { display: block; }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.card-title { font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.card-title i { font-size: 14px; }
+
+/* Score row */
+.score-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+.score-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: border-color 0.15s; }
+.score-card:hover { border-color: var(--border-md); }
+.score-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; font-size: 17px; }
+.score-label { font-size: 11px; color: var(--text-3); margin-bottom: 3px; }
+.score-val { font-size: 22px; font-weight: 700; }
+.score-unit { font-size: 11px; color: var(--text-3); margin-left: 2px; font-weight: 400; }
+.score-date { font-size: 10px; color: var(--text-3); margin-top: 3px; }
+.badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; margin-top: 5px; font-weight: 500; }
+.badge-ok { background: var(--green-light); color: var(--green); }
+.badge-warn { background: var(--amber-light); color: var(--amber); }
+.badge-info { background: var(--purple-light); color: var(--purple); }
+.badge-danger { background: var(--red-light); color: var(--red); }
+
+/* Grid */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.span2 { grid-column: 1 / -1; }
+
+/* Bar list */
+.bar-list { display: flex; flex-direction: column; gap: 9px; }
+.bitem { display: flex; flex-direction: column; gap: 3px; }
+.bitem-meta { display: flex; justify-content: space-between; font-size: 11px; }
+.bname { color: var(--text-2); }
+.bval { font-weight: 500; }
+.btrack { height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.bfill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+/* Vita grid */
+.vita-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.vitem { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.vname { font-size: 11px; color: var(--text-2); flex: 1; }
+.sdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-ok { background: var(--green-mid); }
+.dot-low { background: #EF9F27; }
+.dot-high { background: #E24B4A; }
+.dot-none { background: var(--border-md); }
+.vtrack { flex: 1; height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
+.vfill { height: 100%; border-radius: 2px; }
+.vstatus { font-size: 10px; font-weight: 500; min-width: 20px; text-align: right; }
+
+/* Flora donut */
+.flora-wrap { display: flex; align-items: center; gap: 14px; }
+.flora-legend { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.flora-item { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.flora-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.flora-name { color: var(--text-2); flex: 1; }
+.flora-pct { font-weight: 500; }
+
+/* Timeline */
+.timeline-wrap { display: flex; align-items: center; overflow-x: auto; padding: 4px 0 8px; gap: 0; }
+.tl-point { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 65px; }
+.tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green-mid); border: 2px solid var(--green-light); position: relative; z-index: 1; }
+.tl-dot.past { background: #ccc; border-color: #eee; }
+.tl-line { flex: 1; height: 1px; background: var(--border); align-self: center; min-width: 10px; }
+.tl-line.done { background: var(--green-mid); }
+.tl-type { font-size: 10px; color: var(--text-2); margin-top: 4px; font-weight: 500; text-align: center; }
+.tl-date { font-size: 10px; color: var(--text-3); text-align: center; }
+
+/* Form */
+.form-section { margin-bottom: 18px; }
+.form-title { font-size: 13px; font-weight: 500; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.field { margin-bottom: 10px; }
+label { display: block; font-size: 11px; color: var(--text-2); margin-bottom: 4px; }
+.req { color: var(--red); }
+input, select, textarea {
+  width: 100%; font-size: 13px; padding: 8px 10px;
+  border: 1px solid var(--border-md); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); font-family: inherit;
+  transition: border-color 0.15s;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green-mid); box-shadow: 0 0 0 2px rgba(99,153,34,0.12); }
+select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 26px; }
+textarea { resize: vertical; min-height: 72px; }
+.hint { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+
+/* Ninput */
+.nitem { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border: 1px solid var(--border); border-radius: var(--radius-sm); transition: border-color 0.15s; }
+.nitem:focus-within { border-color: var(--green-mid); }
+.nname { font-size: 11px; color: var(--text-2); flex: 1; }
+.ninput { width: 54px; font-size: 12px; padding: 3px 6px; border: 1px solid var(--border-md); border-radius: 4px; font-family: 'DM Mono', monospace; }
+.nunit { font-size: 10px; color: var(--text-3); white-space: nowrap; min-width: 38px; }
+
+/* Risk items */
+.ritem { padding: 11px 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; }
+.ritem-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.rname { font-size: 12px; font-weight: 500; }
+.rgene { font-size: 10px; color: var(--text-3); font-family: 'DM Mono', monospace; }
+.rsel-row { display: flex; gap: 6px; }
+.rsopt { padding: 4px 11px; border: 1px solid var(--border-md); border-radius: 20px; font-size: 11px; cursor: pointer; background: var(--surface); color: var(--text-2); transition: all 0.12s; }
+.rsopt:hover { background: var(--bg); }
+.rsopt.sel-low { background: var(--green-light); color: var(--green); border-color: var(--green-mid); }
+.rsopt.sel-mid { background: var(--amber-light); color: var(--amber); border-color: #EF9F27; }
+.rsopt.sel-high { background: var(--red-light); color: var(--red); border-color: #E24B4A; }
+
+/* Flora form */
+.flora-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.flora-form-item { padding: 9px 11px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.fn { font-size: 11px; color: var(--text-2); margin-bottom: 2px; }
+.fs { font-size: 10px; color: var(--text-3); font-family: 'DM Mono', monospace; margin-bottom: 5px; }
+.fi-row { display: flex; align-items: center; gap: 5px; }
+.fi { width: 54px; font-size: 12px; padding: 3px 6px; border: 1px solid var(--border-md); border-radius: 4px; font-family: 'DM Mono', monospace; }
+.grade-row { display: flex; gap: 7px; margin-top: 8px; }
+.gopt { padding: 6px 14px; border: 1px solid var(--border-md); border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; background: var(--surface); font-weight: 500; transition: all 0.12s; }
+.gopt:hover { background: var(--bg); }
+.gopt.sel { background: var(--green-light); color: var(--green); border-color: var(--green-mid); }
+.total-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 11px; background: var(--bg); border-radius: var(--radius-sm); }
+.total-warn { color: var(--red); font-weight: 500; }
+
+/* Supplement recommendation */
+.signal-bar { display: grid; grid-template-columns: repeat(4,1fr); gap: 0; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; margin-bottom: 18px; }
+.sig-item { padding: 11px 14px; border-right: 1px solid var(--border); }
+.sig-item:last-child { border-right: none; }
+.sig-label { font-size: 10px; color: var(--text-3); margin-bottom: 3px; }
+.sig-val { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 5px; }
+
+.priority-item { display: flex; gap: 12px; align-items: flex-start; padding: 13px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; border-left-width: 3px; }
+.pi-rank { font-size: 20px; font-weight: 700; color: var(--text-3); min-width: 18px; }
+.pi-body { flex: 1; }
+.pi-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+.pi-reason { font-size: 11px; color: var(--text-2); line-height: 1.6; margin-bottom: 6px; }
+.pi-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.tag { font-size: 10px; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--border); color: var(--text-2); }
+.tag-gene { background: var(--purple-light); color: var(--purple); border-color: #AFA9EC; }
+.tag-vita { background: var(--amber-light); color: var(--amber); border-color: #FAC775; }
+.tag-flora { background: var(--green-light); color: var(--green); border-color: #97C459; }
+.pi-score { text-align: right; min-width: 54px; }
+.pi-score-val { font-size: 20px; font-weight: 700; }
+.pi-score-label { font-size: 10px; color: var(--text-3); }
+.pi-pri { font-size: 10px; padding: 2px 8px; border-radius: 20px; margin-top: 4px; display: inline-block; }
+
+.logic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+.lcard { background: var(--bg); border-radius: var(--radius-sm); padding: 12px; }
+.lcard-head { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; font-size: 12px; font-weight: 500; }
+.lcard-icon { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.lrow { display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+.lrow:last-child { border-bottom: none; }
+.lkey { color: var(--text-2); }
+.lval-row { display: flex; align-items: center; gap: 4px; }
+.ldot { width: 6px; height: 6px; border-radius: 50%; }
+
+.supp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+.supp-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px; cursor: pointer; transition: all 0.15s; }
+.supp-card:hover { border-color: var(--border-md); }
+.supp-card.selected { border: 1.5px solid var(--green-mid); background: #fcfff9; }
+.sc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.sc-icon { width: 30px; height: 30px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.sc-check { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid var(--green-mid); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--green); background: var(--green-light); }
+.sc-check.off { background: var(--surface); border-color: var(--border-md); color: transparent; }
+.sc-name { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
+.sc-dose { font-size: 10px; color: var(--text-3); margin-bottom: 6px; }
+.sc-bar-track { height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; margin-top: 5px; }
+.sc-bar-fill { height: 100%; border-radius: 2px; }
+
+/* Tabs */
+.tab-nav { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; overflow-x: auto; }
+.tab-btn { padding: 9px 16px; font-size: 12px; color: var(--text-2); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; font-family: inherit; background: none; border-top: none; border-left: none; border-right: none; transition: all 0.15s; }
+.tab-btn:hover:not(.active) { background: var(--bg); }
+.tab-btn.active { color: var(--green); border-bottom-color: var(--green-mid); font-weight: 500; }
+
+/* Divider */
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+/* Toast */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: #fff; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 13px; opacity: 0; transform: translateY(8px); transition: all 0.2s; pointer-events: none; z-index: 999; }
+.toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-name">Onc Labo</div>
+    <div class="logo-sub">健康データ管理</div>
+  </div>
+  <div class="nav">
+    <div class="nav-section-label">メニュー</div>
+    <div class="nav-item active" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i>ダッシュボード</div>
+    <div class="nav-item" onclick="showPage('trend',this)"><i class="ti ti-chart-line"></i>トレンド</div>
+    <div class="nav-item" onclick="showPage('entry',this)"><i class="ti ti-plus"></i>データ入力</div>
+    <div class="nav-item" onclick="showPage('supp',this)"><i class="ti ti-pill"></i>サプリ推奨</div>
+    <div class="nav-section-label" style="margin-top:6px">検査データ</div>
+    <div class="nav-item" onclick="showPage('entry',this);switchTab('vita')"><i class="ti ti-flask"></i>ビタノート</div>
+    <div class="nav-item" onclick="showPage('entry',this);switchTab('gene')"><i class="ti ti-dna"></i>遺伝子検査</div>
+    <div class="nav-item" onclick="showPage('entry',this);switchTab('flora')"><i class="ti ti-plant"></i>腸内フローラ</div>
+    <div class="nav-section-label" style="margin-top:6px">その他</div>
+    <div class="nav-item"><i class="ti ti-activity"></i>体組成</div>
+    <div class="nav-item"><i class="ti ti-heart-rate-monitor"></i>健康診断</div>
+    <div class="nav-item"><i class="ti ti-apple"></i>ヘルスケア連携</div>
+  </div>
+  <div class="sidebar-user">
+    <div class="avatar">田</div>
+    <div>
+      <div class="user-name">たかし様</div>
+      <div class="user-id">OL-0042</div>
+    </div>
+  </div>
+</nav>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Dashboard -->
+  <div id="page-dashboard" class="page active">
+    <div class="topbar">
+      <div><div class="topbar-title">ダッシュボード</div><div class="topbar-sub">最終更新: 2025.11.20</div></div>
+      <button class="btn btn-primary" onclick="showPage('entry',null)"><i class="ti ti-plus" style="font-size:13px"></i>データを追加</button>
+    </div>
+    <div class="content">
+      <div class="score-row">
+        <div class="score-card" onclick="showPage('supp',null)">
+          <div class="score-icon" style="background:var(--purple-light);color:var(--purple)"><i class="ti ti-dna"></i></div>
+          <div class="score-label">遺伝子リスクスコア</div>
+          <div class="score-val">72<span class="score-unit">/ 100</span></div>
+          <div class="score-date">chatGENE 2024.09</div>
+          <span class="badge badge-info">3項目 要注意</span>
+        </div>
+        <div class="score-card" onclick="showPage('trend',null)">
+          <div class="score-icon" style="background:var(--amber-light);color:var(--amber)"><i class="ti ti-flask"></i></div>
+          <div class="score-label">栄養充足率（ビタノート）</div>
+          <div class="score-val">68<span class="score-unit">%</span></div>
+          <div class="score-date">2024.11.20</div>
+          <span class="badge badge-warn">2栄養素 低値</span>
+        </div>
+        <div class="score-card" onclick="showPage('trend',null)">
+          <div class="score-icon" style="background:var(--green-light);color:var(--green)"><i class="ti ti-plant"></i></div>
+          <div class="score-label">腸内バランス指数</div>
+          <div class="score-val">B+</div>
+          <div class="score-date">腸内フローラ 2024.10</div>
+          <span class="badge badge-ok">善玉菌 優位</span>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title"><i class="ti ti-flask" style="color:var(--amber)"></i>ビタノート — 栄養素レベル</div>
+          <div class="vita-grid">
+            <div class="vitem"><div class="sdot dot-low"></div><span class="vname">ビタミンD</span><div class="vtrack"><div class="vfill" style="width:38%;background:#EF9F27"></div></div><span class="vstatus" style="color:var(--amber)">低</span></div>
+            <div class="vitem"><div class="sdot dot-low"></div><span class="vname">鉄分</span><div class="vtrack"><div class="vfill" style="width:45%;background:#EF9F27"></div></div><span class="vstatus" style="color:var(--amber)">低</span></div>
+            <div class="vitem"><div class="sdot dot-ok"></div><span class="vname">ビタミンC</span><div class="vtrack"><div class="vfill" style="width:78%;background:var(--green-mid)"></div></div><span class="vstatus" style="color:var(--green)">良</span></div>
+            <div class="vitem"><div class="sdot dot-ok"></div><span class="vname">亜鉛</span><div class="vtrack"><div class="vfill" style="width:65%;background:var(--green-mid)"></div></div><span class="vstatus" style="color:var(--green)">良</span></div>
+            <div class="vitem"><div class="sdot dot-ok"></div><span class="vname">マグネシウム</span><div class="vtrack"><div class="vfill" style="width:55%;background:var(--teal)"></div></div><span class="vstatus" style="color:var(--teal)">良</span></div>
+            <div class="vitem"><div class="sdot dot-high"></div><span class="vname">CoQ10</span><div class="vtrack"><div class="vfill" style="width:88%;background:#E24B4A"></div></div><span class="vstatus" style="color:var(--red)">高</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-plant" style="color:var(--green)"></i>腸内フローラ構成</div>
+          <div class="flora-wrap">
+            <svg width="88" height="88" viewBox="0 0 88 88" style="flex-shrink:0">
+              <circle cx="44" cy="44" r="36" fill="none" stroke="var(--bg)" stroke-width="14"/>
+              <circle cx="44" cy="44" r="36" fill="none" stroke="var(--green-mid)" stroke-width="14" stroke-dasharray="136 90" stroke-dashoffset="23" transform="rotate(-90 44 44)"/>
+              <circle cx="44" cy="44" r="36" fill="none" stroke="var(--amber-light)" stroke-width="14" stroke-dasharray="57 169" stroke-dashoffset="-113" transform="rotate(-90 44 44)"/>
+              <circle cx="44" cy="44" r="36" fill="none" stroke="#EF9F27" stroke-width="14" stroke-dasharray="23 203" stroke-dashoffset="-170" transform="rotate(-90 44 44)"/>
+              <circle cx="44" cy="44" r="36" fill="none" stroke="#ccc" stroke-width="14" stroke-dasharray="10 216" stroke-dashoffset="-193" transform="rotate(-90 44 44)"/>
+              <text x="44" y="48" text-anchor="middle" font-size="13" font-weight="700" fill="var(--green)" font-family="'Noto Sans JP'">B+</text>
+            </svg>
+            <div class="flora-legend">
+              <div class="flora-item"><div class="flora-dot" style="background:var(--green-mid)"></div><span class="flora-name">Bifidobacterium</span><span class="flora-pct">60%</span></div>
+              <div class="flora-item"><div class="flora-dot" style="background:var(--amber-light);border:1px solid #EF9F27"></div><span class="flora-name">Lactobacillus</span><span class="flora-pct">25%</span></div>
+              <div class="flora-item"><div class="flora-dot" style="background:#EF9F27"></div><span class="flora-name">Faecalibacterium</span><span class="flora-pct">10%</span></div>
+              <div class="flora-item"><div class="flora-dot" style="background:#ccc"></div><span class="flora-name">その他</span><span class="flora-pct">5%</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card span2">
+          <div class="card-title"><i class="ti ti-dna" style="color:var(--purple)"></i>遺伝子リスク — 注目項目</div>
+          <div class="bar-list">
+            <div class="bitem"><div class="bitem-meta"><span class="bname">酸化ストレス感受性（NQO1）</span><span class="bval" style="color:var(--red)">高リスク</span></div><div class="btrack"><div class="bfill" style="width:82%;background:#E24B4A"></div></div></div>
+            <div class="bitem"><div class="bitem-meta"><span class="bname">ビタミンD代謝（VDR）</span><span class="bval" style="color:var(--amber)">やや低下</span></div><div class="btrack"><div class="bfill" style="width:55%;background:#EF9F27"></div></div></div>
+            <div class="bitem"><div class="bitem-meta"><span class="bname">葉酸代謝（MTHFR）</span><span class="bval" style="color:var(--amber)">中リスク</span></div><div class="btrack"><div class="bfill" style="width:62%;background:#7F77DD"></div></div></div>
+            <div class="bitem"><div class="bitem-meta"><span class="bname">抗炎症能（TNF-α）</span><span class="bval" style="color:var(--green)">低リスク</span></div><div class="btrack"><div class="bfill" style="width:28%;background:var(--green-mid)"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="ti ti-timeline"></i>測定履歴タイムライン</div>
+        <div class="timeline-wrap">
+          <div class="tl-point"><div class="tl-dot past"></div><div class="tl-type">遺伝子</div><div class="tl-date">2024.03</div></div>
+          <div class="tl-line done"></div>
+          <div class="tl-point"><div class="tl-dot past"></div><div class="tl-type">ビタノート</div><div class="tl-date">2024.05</div></div>
+          <div class="tl-line done"></div>
+          <div class="tl-point"><div class="tl-dot past"></div><div class="tl-type">健康診断</div><div class="tl-date">2024.07</div></div>
+          <div class="tl-line done"></div>
+          <div class="tl-point"><div class="tl-dot past"></div><div class="tl-type">腸内</div><div class="tl-date">2024.10</div></div>
+          <div class="tl-line done"></div>
+          <div class="tl-point"><div class="tl-dot"></div><div class="tl-type" style="color:var(--green)">ビタノート</div><div class="tl-date">2024.11</div></div>
+          <div class="tl-line"></div>
+          <div class="tl-point"><div class="tl-dot past"></div><div class="tl-type">体組成</div><div class="tl-date">2025.01予定</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trend -->
+  <div id="page-trend" class="page">
+    <div class="topbar">
+      <div><div class="topbar-title">トレンド</div><div class="topbar-sub">経時変化と前回比較</div></div>
+    </div>
+    <div class="content">
+      <div class="score-row" style="grid-template-columns:repeat(4,1fr)">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:3px">ビタノート スコア</div>
+          <div style="font-size:20px;font-weight:700">68<span style="font-size:11px;color:var(--text-3);font-weight:400"> pt</span></div>
+          <div style="font-size:11px;color:var(--green);margin-top:2px">↑ +5 前回比</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:3px">遺伝子リスク</div>
+          <div style="font-size:20px;font-weight:700">72<span style="font-size:11px;color:var(--text-3);font-weight:400"> / 100</span></div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:2px">— 変化なし</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:3px">腸内バランス</div>
+          <div style="font-size:20px;font-weight:700">B+</div>
+          <div style="font-size:11px;color:var(--green);margin-top:2px">↑ B → B+</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:3px">測定回数（累計）</div>
+          <div style="font-size:20px;font-weight:700">7<span style="font-size:11px;color:var(--text-3);font-weight:400"> 回</span></div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:2px">直近 2025.11</div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title"><i class="ti ti-chart-line"></i>ビタノート — 主要栄養素の推移</div>
+        <div style="display:flex;gap:14px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-2)"><div style="width:8px;height:8px;border-radius:50%;background:var(--green-mid)"></div>ビタミンD</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-2)"><div style="width:8px;height:8px;border-radius:50%;background:#EF9F27"></div>鉄分</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-2)"><div style="width:8px;height:8px;border-radius:50%;background:#7F77DD"></div>ビタミンB12</div>
+        </div>
+        <canvas id="trendChart" height="160"></canvas>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title"><i class="ti ti-flask" style="color:var(--amber)"></i>ビタノート — 前回比較</div>
+          <div class="bar-list">
+            <div class="bitem"><div class="bitem-meta"><span class="bname">ビタミンD</span><span class="bval" style="color:var(--red)">38% → 42%</span></div><div class="btrack"><div class="bfill" style="width:42%;background:#EF9F27"></div></div></div>
+            <div class="bitem"><div class="bitem-meta"><span class="bname">鉄分</span><span class="bval" style="color:var(--green)">40% → 52%</span></div><div class="btrack"><div class="bfill" style="width:52%;background:var(--green-mid)"></div></div></div>
+            <div class="bitem"><div class="bitem-meta"><span class="bname">ビタミンC</span><span class="bval">78% → 75%</span></div><div class="btrack"><div class="bfill" style="width:75%;background:var(--green-mid)"></div></div></div>
+            <div class="bitem"><div class="bitem-meta"><span class="bname">亜鉛</span><span class="bval" style="color:var(--green)">65% → 68%</span></div><div class="btrack"><div class="bfill" style="width:68%;background:var(--teal)"></div></div></div>
+            <div class="bitem"><div class="bitem-meta"><span class="bname">CoQ10</span><span class="bval" style="color:var(--red)">82% → 90%</span></div><div class="btrack"><div class="bfill" style="width:90%;background:#E24B4A"></div></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-plant" style="color:var(--green)"></i>腸内フローラ — 推移</div>
+          <div class="bar-list">
+            <div class="bitem"><div class="bitem-meta"><span class="bname">Bifidobacterium</span><span class="bval" style="color:var(--green)">52% → 60%</span></div><div class="btrack"><div class="bfill" style="width:60%;background:var(--green-mid)"></div></div></div>
+            <div class="bitem"><div class="bitem-meta"><span class="bname">Lactobacillus</span><span class="bval">28% → 25%</span></div><div class="btrack"><div class="bfill" style="width:25%;background:var(--teal)"></div></div></div>
+            <div class="bitem"><div class="bitem-meta"><span class="bname">Faecalibacterium</span><span class="bval" style="color:var(--green)">8% → 10%</span></div><div class="btrack"><div class="bfill" style="width:10%;background:var(--green-mid)"></div></div></div>
+            <div class="bitem"><div class="bitem-meta"><span class="bname">Bacteroides</span><span class="bval">7% → 4%</span></div><div class="btrack"><div class="bfill" style="width:4%;background:#7F77DD"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry -->
+  <div id="page-entry" class="page">
+    <div class="topbar">
+      <div><div class="topbar-title">データ入力</div><div class="topbar-sub">検査結果を記録する</div></div>
+    </div>
+    <div class="content">
+      <div class="tab-nav">
+        <button class="tab-btn active" id="tab-vita" onclick="switchTab('vita')"><i class="ti ti-flask" style="font-size:13px;vertical-align:-1px"></i> ビタノート</button>
+        <button class="tab-btn" id="tab-gene" onclick="switchTab('gene')"><i class="ti ti-dna" style="font-size:13px;vertical-align:-1px"></i> 遺伝子検査</button>
+        <button class="tab-btn" id="tab-flora" onclick="switchTab('flora')"><i class="ti ti-plant" style="font-size:13px;vertical-align:-1px"></i> 腸内フローラ</button>
+      </div>
+
+      <!-- Vita form -->
+      <div id="form-vita">
+        <div class="card">
+          <div class="form-title"><i class="ti ti-flask" style="color:var(--amber)"></i>ビタノート — 栄養素レベル入力</div>
+          <div class="form-row">
+            <div class="field"><label>検査日<span class="req">*</span></label><input type="date" value="2025-12-01"></div>
+            <div class="field"><label>総合スコア（0〜100）</label><input type="number" min="0" max="100" placeholder="68"></div>
+          </div>
+          <div class="hint" style="margin-bottom:10px">数値を入力するとステータスが自動判定されます</div>
+          <div class="vita-grid" style="margin-bottom:12px">
+            <div class="nitem"><div class="sdot dot-none" id="d-vd"></div><span class="nname">ビタミンD</span><input class="ninput" type="number" placeholder="—" oninput="calcStatus(this,'d-vd',30,80)"><span class="nunit">ng/mL</span></div>
+            <div class="nitem"><div class="sdot dot-none" id="d-fe"></div><span class="nname">鉄分（フェリチン）</span><input class="ninput" type="number" placeholder="—" oninput="calcStatus(this,'d-fe',12,150)"><span class="nunit">ng/mL</span></div>
+            <div class="nitem"><div class="sdot dot-none" id="d-vc"></div><span class="nname">ビタミンC</span><input class="ninput" type="number" placeholder="—" oninput="calcStatus(this,'d-vc',4,15)"><span class="nunit">mg/L</span></div>
+            <div class="nitem"><div class="sdot dot-none" id="d-zn"></div><span class="nname">亜鉛</span><input class="ninput" type="number" placeholder="—" oninput="calcStatus(this,'d-zn',80,130)"><span class="nunit">μg/dL</span></div>
+            <div class="nitem"><div class="sdot dot-none" id="d-mg"></div><span class="nname">マグネシウム</span><input class="ninput" type="number" placeholder="—" oninput="calcStatus(this,'d-mg',1.7,2.3)"><span class="nunit">mg/dL</span></div>
+            <div class="nitem"><div class="sdot dot-none" id="d-q10"></div><span class="nname">CoQ10</span><input class="ninput" type="number" placeholder="—" oninput="calcStatus(this,'d-q10',0.5,1.5)"><span class="nunit">μg/mL</span></div>
+            <div class="nitem"><div class="sdot dot-none" id="d-b12"></div><span class="nname">ビタミンB12</span><input class="ninput" type="number" placeholder="—" oninput="calcStatus(this,'d-b12',200,900)"><span class="nunit">pg/mL</span></div>
+            <div class="nitem"><div class="sdot dot-none" id="d-fa"></div><span class="nname">葉酸</span><input class="ninput" type="number" placeholder="—" oninput="calcStatus(this,'d-fa',3,20)"><span class="nunit">ng/mL</span></div>
+            <div class="nitem"><div class="sdot dot-none" id="d-b6"></div><span class="nname">ビタミンB6</span><input class="ninput" type="number" placeholder="—" oninput="calcStatus(this,'d-b6',5,50)"><span class="nunit">μg/L</span></div>
+            <div class="nitem"><div class="sdot dot-none" id="d-ve"></div><span class="nname">ビタミンE</span><input class="ninput" type="number" placeholder="—" oninput="calcStatus(this,'d-ve',5,20)"><span class="nunit">μg/mL</span></div>
+          </div>
+          <div class="field"><label>コメント・所見</label><textarea placeholder="気になった点やクライアントへのメモ…"></textarea></div>
+          <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="showToast('ビタノートデータを保存しました')">保存する</button></div>
+        </div>
+      </div>
+
+      <!-- Gene form -->
+      <div id="form-gene" style="display:none">
+        <div class="card">
+          <div class="form-title"><i class="ti ti-dna" style="color:var(--purple)"></i>遺伝子検査（chatGENE）— リスク入力</div>
+          <div class="form-row">
+            <div class="field"><label>検査日<span class="req">*</span></label><input type="date" value="2024-09-15"></div>
+            <div class="field"><label>検査キット / 機関</label><input type="text" value="chatGENE"></div>
+          </div>
+          <div class="ritem">
+            <div class="ritem-head"><span class="rname">酸化ストレス感受性</span><span class="rgene">NQO1 rs1800566</span></div>
+            <div class="rsel-row">
+              <div class="rsopt" onclick="selRisk(this,'low')">低リスク</div>
+              <div class="rsopt" onclick="selRisk(this,'mid')">中リスク</div>
+              <div class="rsopt sel-high" onclick="selRisk(this,'high')">高リスク</div>
+            </div>
+          </div>
+          <div class="ritem">
+            <div class="ritem-head"><span class="rname">ビタミンD代謝</span><span class="rgene">VDR rs2228570</span></div>
+            <div class="rsel-row">
+              <div class="rsopt" onclick="selRisk(this,'low')">低リスク</div>
+              <div class="rsopt sel-mid" onclick="selRisk(this,'mid')">中リスク</div>
+              <div class="rsopt" onclick="selRisk(this,'high')">高リスク</div>
+            </div>
+          </div>
+          <div class="ritem">
+            <div class="ritem-head"><span class="rname">葉酸代謝能</span><span class="rgene">MTHFR rs1801133</span></div>
+            <div class="rsel-row">
+              <div class="rsopt" onclick="selRisk(this,'low')">低リスク</div>
+              <div class="rsopt sel-mid" onclick="selRisk(this,'mid')">中リスク</div>
+              <div class="rsopt" onclick="selRisk(this,'high')">高リスク</div>
+            </div>
+          </div>
+          <div class="ritem">
+            <div class="ritem-head"><span class="rname">抗炎症能</span><span class="rgene">TNF-α rs1800629</span></div>
+            <div class="rsel-row">
+              <div class="rsopt sel-low" onclick="selRisk(this,'low')">低リスク</div>
+              <div class="rsopt" onclick="selRisk(this,'mid')">中リスク</div>
+              <div class="rsopt" onclick="selRisk(this,'high')">高リスク</div>
+            </div>
+          </div>
+          <div class="ritem">
+            <div class="ritem-head"><span class="rname">血糖代謝</span><span class="rgene">TCF7L2 rs7903146</span></div>
+            <div class="rsel-row">
+              <div class="rsopt" onclick="selRisk(this,'low')">低リスク</div>
+              <div class="rsopt" onclick="selRisk(this,'mid')">中リスク</div>
+              <div class="rsopt" onclick="selRisk(this,'high')">高リスク</div>
+            </div>
+          </div>
+          <div class="ritem">
+            <div class="ritem-head"><span class="rname">脂質代謝</span><span class="rgene">APOE rs429358</span></div>
+            <div class="rsel-row">
+              <div class="rsopt sel-low" onclick="selRisk(this,'low')">低リスク</div>
+              <div class="rsopt" onclick="selRisk(this,'mid')">中リスク</div>
+              <div class="rsopt" onclick="selRisk(this,'high')">高リスク</div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="form-row">
+            <div class="field"><label>総合リスクスコア（0〜100）</label><input type="number" min="0" max="100" placeholder="72"></div>
+          </div>
+          <div class="field"><label>コメント</label><textarea placeholder="検査機関の所見や相談時のメモ…"></textarea></div>
+          <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="showToast('遺伝子検査データを保存しました')">保存する</button></div>
+        </div>
+      </div>
+
+      <!-- Flora form -->
+      <div id="form-flora" style="display:none">
+        <div class="card">
+          <div class="form-title"><i class="ti ti-plant" style="color:var(--green)"></i>腸内フローラ — 菌叢構成入力</div>
+          <div class="form-row">
+            <div class="field"><label>検査日<span class="req">*</span></label><input type="date" value="2024-10-20"></div>
+            <div class="field"><label>検査機関</label><input type="text" placeholder="例: MyKinso / 腸活ラボ"></div>
+          </div>
+          <div class="hint" style="margin-bottom:10px">各菌の割合（%）を入力してください。合計が100%になるよう入力します。</div>
+          <div class="flora-grid">
+            <div class="flora-form-item"><div class="fn">ビフィズス菌</div><div class="fs">Bifidobacterium spp.</div><div class="fi-row"><input class="fi" type="number" min="0" max="100" placeholder="0" oninput="updateFloraTotal()"><span style="font-size:11px;color:var(--text-3)"> %</span></div></div>
+            <div class="flora-form-item"><div class="fn">乳酸菌</div><div class="fs">Lactobacillus spp.</div><div class="fi-row"><input class="fi" type="number" min="0" max="100" placeholder="0" oninput="updateFloraTotal()"><span style="font-size:11px;color:var(--text-3)"> %</span></div></div>
+            <div class="flora-form-item"><div class="fn">酪酸産生菌</div><div class="fs">Faecalibacterium prausnitzii</div><div class="fi-row"><input class="fi" type="number" min="0" max="100" placeholder="0" oninput="updateFloraTotal()"><span style="font-size:11px;color:var(--text-3)"> %</span></div></div>
+            <div class="flora-form-item"><div class="fn">バクテロイデス属</div><div class="fs">Bacteroides spp.</div><div class="fi-row"><input class="fi" type="number" min="0" max="100" placeholder="0" oninput="updateFloraTotal()"><span style="font-size:11px;color:var(--text-3)"> %</span></div></div>
+            <div class="flora-form-item"><div class="fn">クロストリジウム属</div><div class="fs">Clostridium spp.</div><div class="fi-row"><input class="fi" type="number" min="0" max="100" placeholder="0" oninput="updateFloraTotal()"><span style="font-size:11px;color:var(--text-3)"> %</span></div></div>
+            <div class="flora-form-item"><div class="fn">その他</div><div class="fs">Others</div><div class="fi-row"><input class="fi" type="number" min="0" max="100" placeholder="0" oninput="updateFloraTotal()"><span style="font-size:11px;color:var(--text-3)"> %</span></div></div>
+          </div>
+          <div class="total-row" style="margin-bottom:12px">
+            <span style="font-size:12px;color:var(--text-2)">合計</span>
+            <span id="flora-total" style="font-size:14px;font-weight:700">0 %</span>
+          </div>
+          <div class="field">
+            <label>腸内バランス総合評価</label>
+            <div class="grade-row">
+              <div class="gopt" onclick="selGrade(this)">A</div>
+              <div class="gopt" onclick="selGrade(this)">B+</div>
+              <div class="gopt sel" onclick="selGrade(this)">B</div>
+              <div class="gopt" onclick="selGrade(this)">C</div>
+              <div class="gopt" onclick="selGrade(this)">D</div>
+            </div>
+          </div>
+          <div class="field"><label>コメント</label><textarea placeholder="善玉菌優位・多様性スコア・改善ポイントなど…"></textarea></div>
+          <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="showToast('腸内フローラデータを保存しました')">保存する</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supplement -->
+  <div id="page-supp" class="page">
+    <div class="topbar">
+      <div><div class="topbar-title">サプリ推奨</div><div class="topbar-sub">遺伝子 × ビタノート かけ合わせロジック</div></div>
+      <button class="btn" onclick="recalcSupp()"><i class="ti ti-refresh" style="font-size:13px"></i>再計算</button>
+    </div>
+    <div class="content">
+      <div class="signal-bar">
+        <div class="sig-item"><div class="sig-label">ビタノート スコア</div><div class="sig-val">68 pt <span class="badge badge-warn">低め</span></div></div>
+        <div class="sig-item"><div class="sig-label">遺伝子（VDR）</div><div class="sig-val">中リスク <span class="badge badge-info">要補強</span></div></div>
+        <div class="sig-item"><div class="sig-label">遺伝子（NQO1）</div><div class="sig-val">高リスク <span class="badge badge-danger">優先対応</span></div></div>
+        <div class="sig-item"><div class="sig-label">腸内フローラ</div><div class="sig-val">B+ <span class="badge badge-ok">良好</span></div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title"><i class="ti ti-sort-descending"></i>優先度ランキング</div>
+        <div class="priority-item" style="border-left-color:#E24B4A">
+          <div class="pi-rank">1</div>
+          <div class="pi-body">
+            <div class="pi-name">ビタミンD3 + K2</div>
+            <div class="pi-reason">ビタノート低値（38%）× VDR遺伝子変異により代謝効率が低下。通常量では不足するため高用量補充が必要。</div>
+            <div class="pi-tags"><span class="tag tag-gene">VDR rs2228570</span><span class="tag tag-vita">ビタミンD: 低値</span><span class="tag tag-flora">腸内吸収: 良好</span></div>
+          </div>
+          <div class="pi-score"><div class="pi-score-val">97</div><div class="pi-score-label">推奨スコア</div><div class="pi-pri" style="background:var(--red-light);color:var(--red)">最優先</div></div>
+        </div>
+        <div class="priority-item" style="border-left-color:#EF9F27">
+          <div class="pi-rank">2</div>
+          <div class="pi-body">
+            <div class="pi-name">活性型葉酸（メチルフォレート）</div>
+            <div class="pi-reason">MTHFR変異により通常の葉酸を活性型に変換できない。非活性型ではなくメチル化型が必須。</div>
+            <div class="pi-tags"><span class="tag tag-gene">MTHFR rs1801133</span><span class="tag tag-vita">葉酸: 要確認</span></div>
+          </div>
+          <div class="pi-score"><div class="pi-score-val">91</div><div class="pi-score-label">推奨スコア</div><div class="pi-pri" style="background:var(--amber-light);color:var(--amber)">高優先</div></div>
+        </div>
+        <div class="priority-item" style="border-left-color:#EF9F27">
+          <div class="pi-rank">3</div>
+          <div class="pi-body">
+            <div class="pi-name">キレート鉄（グリシン酸鉄）</div>
+            <div class="pi-reason">ビタノート鉄分が継続低値。腸内フローラ良好のため吸収率の高いキレート型が有効。酸化ストレスへの配慮も必要。</div>
+            <div class="pi-tags"><span class="tag tag-vita">鉄分: 低値</span><span class="tag tag-gene">NQO1: 高リスク</span><span class="tag tag-flora">腸内: B+</span></div>
+          </div>
+          <div class="pi-score"><div class="pi-score-val">88</div><div class="pi-score-label">推奨スコア</div><div class="pi-pri" style="background:var(--amber-light);color:var(--amber)">高優先</div></div>
+        </div>
+        <div class="priority-item" style="border-left-color:var(--green-mid)">
+          <div class="pi-rank">4</div>
+          <div class="pi-body">
+            <div class="pi-name">スルフォラファン / NRF2活性化</div>
+            <div class="pi-reason">NQO1高リスクにより内因性抗酸化経路が弱い。NRF2経路を食事・サプリで補強することで酸化ストレスに対抗。</div>
+            <div class="pi-tags"><span class="tag tag-gene">NQO1 rs1800566</span></div>
+          </div>
+          <div class="pi-score"><div class="pi-score-val">82</div><div class="pi-score-label">推奨スコア</div><div class="pi-pri" style="background:var(--green-light);color:var(--green)">推奨</div></div>
+        </div>
+        <div class="priority-item" style="border-left-color:var(--green-mid);opacity:0.75">
+          <div class="pi-rank">5</div>
+          <div class="pi-body">
+            <div class="pi-name">マグネシウム（グリシン酸Mg）</div>
+            <div class="pi-reason">ビタミンD代謝・エネルギー産生に必要。VDR遺伝子変異とのシナジーを考慮して継続補充を推奨。</div>
+            <div class="pi-tags"><span class="tag tag-vita">Mg: 基準内</span><span class="tag tag-gene">VDR シナジー</span></div>
+          </div>
+          <div class="pi-score"><div class="pi-score-val">74</div><div class="pi-score-label">推奨スコア</div><div class="pi-pri" style="background:var(--green-light);color:var(--green)">推奨</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title"><i class="ti ti-git-merge"></i>かけ合わせロジックの根拠</div>
+        <div class="logic-grid">
+          <div class="lcard">
+            <div class="lcard-head"><div class="lcard-icon" style="background:var(--purple-light);color:var(--purple)"><i class="ti ti-dna"></i></div>遺伝子シグナル</div>
+            <div class="lrow"><span class="lkey">NQO1</span><div class="lval-row"><span style="font-weight:500">高リスク</span><div class="ldot" style="background:#E24B4A"></div></div></div>
+            <div class="lrow"><span class="lkey">VDR</span><div class="lval-row"><span style="font-weight:500">中リスク</span><div class="ldot" style="background:#EF9F27"></div></div></div>
+            <div class="lrow"><span class="lkey">MTHFR</span><div class="lval-row"><span style="font-weight:500">中リスク</span><div class="ldot" style="background:#EF9F27"></div></div></div>
+            <div class="lrow"><span class="lkey">APOE</span><div class="lval-row"><span style="font-weight:500">低リスク</span><div class="ldot" style="background:var(--green-mid)"></div></div></div>
+          </div>
+          <div class="lcard">
+            <div class="lcard-head"><div class="lcard-icon" style="background:var(--amber-light);color:var(--amber)"><i class="ti ti-flask"></i></div>ビタノートシグナル</div>
+            <div class="lrow"><span class="lkey">ビタミンD</span><div class="lval-row"><span style="font-weight:500">38% — 低値</span><div class="ldot" style="background:#E24B4A"></div></div></div>
+            <div class="lrow"><span class="lkey">鉄分</span><div class="lval-row"><span style="font-weight:500">45% — 低値</span><div class="ldot" style="background:#EF9F27"></div></div></div>
+            <div class="lrow"><span class="lkey">CoQ10</span><div class="lval-row"><span style="font-weight:500">88% — 高め</span><div class="ldot" style="background:#EF9F27"></div></div></div>
+            <div class="lrow"><span class="lkey">ビタミンC</span><div class="lval-row"><span style="font-weight:500">75% — 良好</span><div class="ldot" style="background:var(--green-mid)"></div></div></div>
+          </div>
+        </div>
+        <div style="text-align:center;padding:10px 0;font-size:11px;color:var(--text-3);display:flex;align-items:center;justify-content:center;gap:6px"><i class="ti ti-arrows-join" style="font-size:15px"></i>遺伝子リスクが高い栄養素ほど、ビタノート低値と重なった場合に推奨スコアが増幅される</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="ti ti-pill"></i>推奨サプリ — 選択して記録</div>
+        <div class="supp-grid">
+          <div class="supp-card selected" onclick="toggleSupp(this)">
+            <div class="sc-head"><div class="sc-icon" style="background:var(--purple-light);color:var(--purple)"><i class="ti ti-sun"></i></div><div class="sc-check"><i class="ti ti-check" style="font-size:11px"></i></div></div>
+            <div class="sc-name">ビタミンD3 + K2</div>
+            <div class="sc-dose">5,000 IU / 日（食後）</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap"><span class="tag tag-gene">VDR対応</span></div>
+            <div class="sc-bar-track"><div class="sc-bar-fill" style="width:97%;background:#E24B4A"></div></div>
+          </div>
+          <div class="supp-card selected" onclick="toggleSupp(this)">
+            <div class="sc-head"><div class="sc-icon" style="background:var(--green-light);color:var(--green)"><i class="ti ti-leaf"></i></div><div class="sc-check"><i class="ti ti-check" style="font-size:11px"></i></div></div>
+            <div class="sc-name">メチルフォレート</div>
+            <div class="sc-dose">800 μg / 日</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap"><span class="tag tag-gene">MTHFR対応</span></div>
+            <div class="sc-bar-track"><div class="sc-bar-fill" style="width:91%;background:#E24B4A"></div></div>
+          </div>
+          <div class="supp-card selected" onclick="toggleSupp(this)">
+            <div class="sc-head"><div class="sc-icon" style="background:var(--amber-light);color:var(--amber)"><i class="ti ti-droplet"></i></div><div class="sc-check"><i class="ti ti-check" style="font-size:11px"></i></div></div>
+            <div class="sc-name">キレート鉄</div>
+            <div class="sc-dose">18 mg / 日</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap"><span class="tag tag-vita">鉄分補充</span></div>
+            <div class="sc-bar-track"><div class="sc-bar-fill" style="width:88%;background:#EF9F27"></div></div>
+          </div>
+          <div class="supp-card" onclick="toggleSupp(this)">
+            <div class="sc-head"><div class="sc-icon" style="background:var(--green-light);color:var(--green)"><i class="ti ti-plant"></i></div><div class="sc-check off"><i class="ti ti-check" style="font-size:11px"></i></div></div>
+            <div class="sc-name">スルフォラファン</div>
+            <div class="sc-dose">30 mg / 日（食後）</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap"><span class="tag tag-gene">NQO1対応</span></div>
+            <div class="sc-bar-track"><div class="sc-bar-fill" style="width:82%;background:#EF9F27"></div></div>
+          </div>
+          <div class="supp-card" onclick="toggleSupp(this)">
+            <div class="sc-head"><div class="sc-icon" style="background:var(--teal-light);color:var(--teal)"><i class="ti ti-bolt"></i></div><div class="sc-check off"><i class="ti ti-check" style="font-size:11px"></i></div></div>
+            <div class="sc-name">グリシン酸マグネシウム</div>
+            <div class="sc-dose">200 mg / 日（就寝前）</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap"><span class="tag tag-gene">VDR シナジー</span></div>
+            <div class="sc-bar-track"><div class="sc-bar-fill" style="width:74%;background:var(--green-mid)"></div></div>
+          </div>
+          <div class="supp-card" onclick="toggleSupp(this)">
+            <div class="sc-head"><div class="sc-icon" style="background:var(--amber-light);color:var(--amber)"><i class="ti ti-atom"></i></div><div class="sc-check off"><i class="ti ti-check" style="font-size:11px"></i></div></div>
+            <div class="sc-name">CoQ10（ユビキノール型）</div>
+            <div class="sc-dose">現在高値 — 経過観察</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap"><span class="tag">経過観察</span></div>
+            <div class="sc-bar-track"><div class="sc-bar-fill" style="width:20%;background:#ccc"></div></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:8px">
+          <button class="btn btn-primary" onclick="showToast('サプリプランを保存しました')">選択を保存する</button>
+        </div>
+      </div>
+
+      <div style="font-size:11px;color:var(--text-3);margin-top:10px;display:flex;align-items:center;gap:5px"><i class="ti ti-info-circle" style="font-size:13px"></i>本推奨は遺伝子×ビタノートデータに基づく参考情報です。医療行為ではありません。</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+function showPage(id, navEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (navEl) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    navEl.classList.add('active');
+  }
+  if (id === 'trend') setTimeout(drawTrend, 80);
+}
+
+function switchTab(tab) {
+  ['vita','gene','flora'].forEach(t => {
+    document.getElementById('form-' + t).style.display = t === tab ? 'block' : 'none';
+    const btn = document.getElementById('tab-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+}
+
+function calcStatus(input, dotId, low, high) {
+  const v = parseFloat(input.value);
+  const d = document.getElementById(dotId);
+  if (isNaN(v)) { d.className = 'sdot dot-none'; return; }
+  d.className = v < low ? 'sdot dot-low' : v > high ? 'sdot dot-high' : 'sdot dot-ok';
+}
+
+function selRisk(el, level) {
+  el.closest('.rsel-row').querySelectorAll('.rsopt').forEach(o => o.className = 'rsopt');
+  el.classList.add('sel-' + level);
+}
+
+function selGrade(el) {
+  document.querySelectorAll('.gopt').forEach(g => g.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function updateFloraTotal() {
+  const inputs = document.querySelectorAll('.fi');
+  let total = 0;
+  inputs.forEach(i => { total += parseFloat(i.value) || 0; });
+  const el = document.getElementById('flora-total');
+  el.textContent = Math.round(total) + ' %';
+  el.className = Math.abs(total - 100) < 1 ? '' : 'total-warn';
+}
+
+function toggleSupp(el) {
+  el.classList.toggle('selected');
+  const chk = el.querySelector('.sc-check');
+  chk.classList.toggle('off', !el.classList.contains('selected'));
+}
+
+function recalcSupp() {
+  document.querySelectorAll('.pi-score-val').forEach(el => {
+    const base = parseInt(el.textContent);
+    el.textContent = Math.min(99, Math.max(50, base + Math.round((Math.random() - 0.5) * 4)));
+  });
+  showToast('推奨スコアを再計算しました');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+let trendChart = null;
+function drawTrend() {
+  const canvas = document.getElementById('trendChart');
+  if (!canvas) return;
+  if (trendChart) { trendChart.destroy(); }
+  trendChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: ['2024.03', '2024.05', '2024.08', '2024.11'],
+      datasets: [
+        { label: 'ビタミンD', data: [22, 26, 30, 34], borderColor: '#639922', backgroundColor: 'rgba(99,153,34,0.07)', tension: 0.4, pointRadius: 4, pointBackgroundColor: '#639922', fill: true },
+        { label: '鉄分', data: [18, 20, 20, 26], borderColor: '#EF9F27', backgroundColor: 'rgba(239,159,39,0.06)', tension: 0.4, pointRadius: 4, pointBackgroundColor: '#EF9F27', fill: true },
+        { label: 'B12', data: [380, 420, 400, 460], borderColor: '#7F77DD', backgroundColor: 'rgba(127,119,221,0.05)', tension: 0.4, pointRadius: 4, pointBackgroundColor: '#7F77DD', fill: true, yAxisID: 'y2' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 }, color: '#9a9a94' } },
+        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 10 }, color: '#9a9a94' }, title: { display: true, text: 'ng/mL', color: '#9a9a94', font: { size: 10 } } },
+        y2: { position: 'right', grid: { display: false }, ticks: { font: { size: 10 }, color: '#9a9a94' }, title: { display: true, text: 'pg/mL', color: '#9a9a94', font: { size: 10 } } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
